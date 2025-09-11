@@ -3,33 +3,36 @@ import mysql.connector
 
 
 def stream_users_in_batches(batch_size):
-    """Generator that yields users in batches of batch_size."""
-    connection = None
-    cursor = None
-    try:
-        connection = mysql.connector.connect(
-            host="localhost",
-            user="root",       # adjust if needed
-            password="root",   # adjust if needed
-            database="ALX_prodev"
-        )
-        cursor = connection.cursor(dictionary=True)
-        cursor.execute("SELECT * FROM user_data")
+    """Return a generator that yields users in batches of batch_size."""
+    def generator():
+        connection = None
+        cursor = None
+        try:
+            connection = mysql.connector.connect(
+                host="localhost",
+                user="root",       # adjust if needed
+                password="root",   # adjust if needed
+                database="ALX_prodev"
+            )
+            cursor = connection.cursor(dictionary=True)
+            cursor.execute("SELECT * FROM user_data")
 
-        batch = []
-        for row in cursor:  # loop 1
-            batch.append(row)
-            if len(batch) == batch_size:
+            batch = []
+            for row in cursor:  # loop 1
+                batch.append(row)
+                if len(batch) == batch_size:
+                    yield batch
+                    batch = []
+            if batch:  # yield leftover
                 yield batch
-                batch = []
-        if batch:  # yield leftover
-            yield batch
 
-    finally:
-        if cursor:
-            cursor.close()
-        if connection and connection.is_connected():
-            connection.close()
+        finally:
+            if cursor:
+                cursor.close()
+            if connection and connection.is_connected():
+                connection.close()
+
+    return generator()  # <- use return here
 
 
 def batch_processing(batch_size):

@@ -11,6 +11,6 @@ def stream_user_ages():
         cursor = connection.cursor()
         cursor.execute("SELECT age FROM user_data")
         for row in cursor:
-            yield row[0]
+            yield row[0]   # <-- this is the generator part
         cursor.close()
         connection.close()

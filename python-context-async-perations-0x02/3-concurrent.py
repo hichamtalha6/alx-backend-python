@@ -16,14 +16,13 @@ async def async_fetch_older_users(db_name="users.db"):
             return await cursor.fetchall()
 
 
-async def fetch_concurrently():
-    """Run both queries concurrently using asyncio.gather"""
+async def check_functions():
+    """Run both functions concurrently and perform simple checks"""
     all_users, older_users = await asyncio.gather(
         async_fetch_users(),
         async_fetch_older_users()
     )
 
-    # Checks / print results
     print("All users:")
     for user in all_users:
         print(user)
@@ -32,6 +31,17 @@ async def fetch_concurrently():
     for user in older_users:
         print(user)
 
+    # Basic programmatic checks
+    assert isinstance(all_users, list), "async_fetch_users() should return a list"
+    assert isinstance(older_users, list), "async_fetch_older_users() should return a list"
+
+    # Ensure all older_users are actually older than 40
+    for user in older_users:
+        age = user[2]  # assuming age is the 3rd column
+        assert age > 40, f"Found user with age <= 40: {age}"
+
+    print("\nAll checks passed!")
+
 
 if __name__ == "__main__":
-    asyncio.run(fetch_concurrently())
+    asyncio.run(check_functions())

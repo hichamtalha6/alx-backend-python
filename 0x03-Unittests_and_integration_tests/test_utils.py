@@ -7,11 +7,12 @@ from utils import access_nested_map
 class TestAccessNestedMap(unittest.TestCase):
     """Test cases for access_nested_map"""
 
-    @parameterized.expand([
-        ({"a": 1}, ("a",), 1),
-        ({"a": {"b": 2}}, ("a",), {"b": 2}),
-        ({"a": {"b": 2}}, ("a", "b"), 2),
+        @parameterized.expand([
+        ({}, ("a",), "'a'"),
+        ({"a": 1}, ("a", "b"), "'b'"),
     ])
+    def test_access_nested_map_exception(self, nested_map, path, expected_message):
+
     def test_access_nested_map(self, nested_map, path, expected):
         """Test access_nested_map returns correct values"""
         self.assertEqual(access_nested_map(nested_map, path), expected)

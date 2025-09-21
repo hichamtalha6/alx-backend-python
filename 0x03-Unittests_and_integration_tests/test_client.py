@@ -27,6 +27,7 @@ class TestGithubOrgClient(unittest.TestCase):
         mock_get_json.return_value = expected_payload
 
         client = GithubOrgClient(org_name)
+        # org is a property; access without parentheses
         result = client.org
 
         # Ensure the returned value is correct

@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 import unittest
 from parameterized import parameterized
-from utils import access_nested_map
+from unittest.mock import patch
+from utils import access_nested_map, memoize
 
 
 class TestAccessNestedMap(unittest.TestCase):
@@ -25,6 +26,33 @@ class TestAccessNestedMap(unittest.TestCase):
         with self.assertRaises(KeyError) as cm:
             access_nested_map({"a": 1}, ("a", "b"))
         self.assertEqual(str(cm.exception), "'b'")
+
+
+class TestMemoize(unittest.TestCase):
+    """Test cases for the memoize decorator"""
+
+    def test_memoize(self):
+        """Test that memoize caches the result of a method"""
+
+        class TestClass:
+            def a_method(self):
+                return 42
+
+            @memoize
+            def a_property(self):
+                return self.a_method()
+
+        with patch.object(TestClass, "a_method", return_value=42) as mock_method:
+            obj = TestClass()
+
+            # First call: should call a_method
+            result1 = obj.a_property
+            # Second call: should use cached value, not call a_method again
+            result2 = obj.a_property
+
+            self.assertEqual(result1, 42)
+            self.assertEqual(result2, 42)
+            mock_method.assert_called_once()
 
 
 if __name__ == "__main__":

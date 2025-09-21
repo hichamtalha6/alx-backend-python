@@ -25,7 +25,7 @@ class TestIntegrationGithubOrgClient(unittest.TestCase):
         cls.get_patcher = patch("requests.get")
         cls.mock_get = cls.get_patcher.start()
 
-        # Define side_effect function for requests.get(url)
+        # Side effect for different URLs
         def get_side_effect(url, *args, **kwargs):
             mock_resp = Mock()
             if url.endswith("/orgs/google"):

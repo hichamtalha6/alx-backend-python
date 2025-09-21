@@ -4,6 +4,7 @@ Unittests for client.GithubOrgClient class.
 
 This module contains test cases for:
 - GithubOrgClient.org method
+- GithubOrgClient._public_repos_url property
 """
 import unittest
 from parameterized import parameterized
@@ -31,9 +32,4 @@ class TestGithubOrgClient(unittest.TestCase):
 
             self.assertEqual(result, expected_payload)
             mock_get_json.assert_called_once_with(
-                f"https://api.github.com/orgs/{org_name}"
-            )
-
-
-if __name__ == "__main__":
-    unittest.main()
+                f"https

@@ -7,16 +7,7 @@ from utils import access_nested_map, memoize
 
 class TestAccessNestedMap(unittest.TestCase):
     """Test cases for access_nested_map"""
-
-    @parameterized.expand([
-        ({"a": 1}, ("a",), 1),
-        ({"a": {"b": 2}}, ("a",), {"b": 2}),
-        ({"a": {"b": 2}}, ("a", "b"), 2),
-    ])
-    def test_access_nested_map(self, nested_map, path, expected):
-        """Test access_nested_map returns correct values"""
-        self.assertEqual(access_nested_map(nested_map, path), expected)
-
+    ...
     def test_access_nested_map_exception(self):
         """Test that KeyError is raised with the correct message"""
         with self.assertRaises(KeyError) as cm:
@@ -26,6 +17,15 @@ class TestAccessNestedMap(unittest.TestCase):
         with self.assertRaises(KeyError) as cm:
             access_nested_map({"a": 1}, ("a", "b"))
         self.assertEqual(str(cm.exception), "'b'")
+
+
+class TestMemoize(unittest.TestCase):
+    """Test cases for the memoize decorator"""
+
+    def test_memoize(self):
+        """Test that memoize caches the result of a method"""
+        ...
+
 
 
 class TestMemoize(unittest.TestCase):

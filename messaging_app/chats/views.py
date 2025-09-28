@@ -1,7 +1,6 @@
 # messaging_app/chats/views.py
-from rest_framework import viewsets, status
+from rest_framework import viewsets, status, filters
 from rest_framework.response import Response
-from rest_framework.decorators import action
 from django.shortcuts import get_object_or_404
 
 from .models import Conversation, Message, User
@@ -11,6 +10,9 @@ from .serializers import ConversationSerializer, MessageSerializer
 class ConversationViewSet(viewsets.ModelViewSet):
     queryset = Conversation.objects.all()
     serializer_class = ConversationSerializer
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ["participants__username", "participants__email"]
+    ordering_fields = ["conversation_id"]
 
     def create(self, request, *args, **kwargs):
         """
@@ -23,7 +25,6 @@ class ConversationViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Fetch users
         participants = User.objects.filter(user_id__in=participant_ids)
         if participants.count() != len(participant_ids):
             return Response(
@@ -40,6 +41,9 @@ class ConversationViewSet(viewsets.ModelViewSet):
 class MessageViewSet(viewsets.ModelViewSet):
     queryset = Message.objects.all()
     serializer_class = MessageSerializer
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ["content", "sender__username"]
+    ordering_fields = ["timestamp"]
 
     def create(self, request, *args, **kwargs):
         """
@@ -53,23 +57,3 @@ class MessageViewSet(viewsets.ModelViewSet):
         if not sender_id or not conversation_id or not content:
             return Response(
                 {"error": "sender_id, conversation_id, and content are required."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        sender = get_object_or_404(User, user_id=sender_id)
-        conversation = get_object_or_404(Conversation, conversation_id=conversation_id)
-
-        # Ensure sender is part of the conversation
-        if sender not in conversation.participants.all():
-            return Response(
-                {"error": "Sender is not a participant in this conversation."},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-
-        message = Message.objects.create(
-            sender=sender,
-            conversation=conversation,
-            content=content,
-        )
-        serializer = self.get_serializer(message)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)

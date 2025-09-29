@@ -8,6 +8,10 @@ from .models import Conversation, Message, User
 from .serializers import ConversationSerializer, MessageSerializer
 from .permissions import IsParticipantOfConversation
 
+from .filters import MessageFilter
+from .pagination import MessagePagination
+from django_filters.rest_framework import DjangoFilterBackend
+
 
 class ConversationViewSet(viewsets.ModelViewSet):
     serializer_class = ConversationSerializer
@@ -52,6 +56,7 @@ class MessageViewSet(viewsets.ModelViewSet):
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["content", "sender__username"]
     ordering_fields = ["timestamp"]
+    pagination_class = MessagePagination
 
     def get_queryset(self):
         """
@@ -96,3 +101,4 @@ class MessageViewSet(viewsets.ModelViewSet):
         )
         serializer = self.get_serializer(message)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+

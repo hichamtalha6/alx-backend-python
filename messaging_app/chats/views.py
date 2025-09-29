@@ -1,18 +1,26 @@
 # messaging_app/chats/views.py
 from rest_framework import viewsets, status, filters
 from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
 
 from .models import Conversation, Message, User
 from .serializers import ConversationSerializer, MessageSerializer
+from .permissions import IsParticipantOfConversation
 
 
 class ConversationViewSet(viewsets.ModelViewSet):
-    queryset = Conversation.objects.all()
     serializer_class = ConversationSerializer
+    permission_classes = [IsAuthenticated, IsParticipantOfConversation]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["participants__username", "participants__email"]
     ordering_fields = ["conversation_id"]
+
+    def get_queryset(self):
+        """
+        Only return conversations where the authenticated user is a participant.
+        """
+        return Conversation.objects.filter(participants=self.request.user)
 
     def create(self, request, *args, **kwargs):
         """
@@ -39,11 +47,17 @@ class ConversationViewSet(viewsets.ModelViewSet):
 
 
 class MessageViewSet(viewsets.ModelViewSet):
-    queryset = Message.objects.all()
     serializer_class = MessageSerializer
+    permission_classes = [IsAuthenticated, IsParticipantOfConversation]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["content", "sender__username"]
     ordering_fields = ["timestamp"]
+
+    def get_queryset(self):
+        """
+        Only return messages from conversations where the authenticated user is a participant.
+        """
+        return Message.objects.filter(conversation__participants=self.request.user)
 
     def create(self, request, *args, **kwargs):
         """
@@ -57,3 +71,28 @@ class MessageViewSet(viewsets.ModelViewSet):
         if not sender_id or not conversation_id or not content:
             return Response(
                 {"error": "sender_id, conversation_id, and content are required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        sender = get_object_or_404(User, user_id=sender_id)
+        conversation = get_object_or_404(Conversation, conversation_id=conversation_id)
+
+        # Ensure sender is the logged-in user
+        if sender != request.user:
+            return Response(
+                {"error": "You can only send messages as yourself."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        # Ensure sender is a participant in the conversation
+        if request.user not in conversation.participants.all():
+            return Response(
+                {"error": "You are not a participant in this conversation."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        message = Message.objects.create(
+            sender=sender, conversation=conversation, content=content
+        )
+        serializer = self.get_serializer(message)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)

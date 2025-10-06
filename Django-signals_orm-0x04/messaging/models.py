@@ -2,6 +2,20 @@ from django.db import models
 from django.contrib.auth.models import User
 
 
+# ✅ Custom Manager to get unread messages efficiently
+class UnreadMessagesManager(models.Manager):
+    def for_user(self, user):
+        """
+        Return unread messages for the given user,
+        using .only() to select minimal fields for performance.
+        """
+        return (
+            self.filter(receiver=user, read=False)
+            .select_related('sender', 'receiver')
+            .only('id', 'sender__username', 'content', 'timestamp')
+        )
+
+
 class Message(models.Model):
     sender = models.ForeignKey(User, related_name='sent_messages', on_delete=models.CASCADE)
     receiver = models.ForeignKey(User, related_name='received_messages', on_delete=models.CASCADE)
@@ -15,7 +29,6 @@ class Message(models.Model):
         null=True,
         blank=True
     )
-    # ✅ New field: parent_message — allows replies (threaded conversations)
     parent_message = models.ForeignKey(
         'self',
         related_name='replies',
@@ -23,15 +36,19 @@ class Message(models.Model):
         null=True,
         blank=True
     )
+    # ✅ New field to track if message has been read
+    read = models.BooleanField(default=False)
+
+    # ✅ Attach the custom manager
+    objects = models.Manager()  # Default manager
+    unread = UnreadMessagesManager()  # Custom manager for unread messages
 
     def __str__(self):
         return f"Message from {self.sender.username} to {self.receiver.username}"
 
-    # ✅ Recursive function to fetch all replies in threaded format
     def get_thread(self):
         """
         Recursively fetch all replies (and nested replies) for this message.
-        Returns a list of dictionaries representing the thread.
         """
         thread = []
         for reply in self.replies.all().select_related('sender', 'receiver'):
@@ -40,7 +57,7 @@ class Message(models.Model):
                 "content": reply.content,
                 "sender": reply.sender.username,
                 "timestamp": reply.timestamp,
-                "replies": reply.get_thread()  # recursive call
+                "replies": reply.get_thread()
             })
         return thread
 
@@ -48,16 +65,14 @@ class Message(models.Model):
     def get_conversation(cls, user):
         """
         Optimized query to get all messages (and replies) in a user's conversations.
-        Uses select_related and prefetch_related to minimize queries.
         """
         return cls.objects.filter(
             models.Q(sender=user) | models.Q(receiver=user),
-            parent_message__isnull=True  # only top-level messages
+            parent_message__isnull=True
         ).select_related('sender', 'receiver').prefetch_related('replies', 'replies__sender', 'replies__receiver')
 
 
 class Notification(models.Model):
-    """Notification when a new message is received."""
     user = models.ForeignKey(User, related_name='notifications', on_delete=models.CASCADE)
     message = models.ForeignKey(Message, related_name='notifications', on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -68,7 +83,6 @@ class Notification(models.Model):
 
 
 class MessageHistory(models.Model):
-    """Stores old versions of messages before edits."""
     message = models.ForeignKey(Message, related_name='history', on_delete=models.CASCADE)
     old_content = models.TextField()
     edited_at = models.DateTimeField(auto_now_add=True)

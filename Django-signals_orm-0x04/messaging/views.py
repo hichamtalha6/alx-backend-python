@@ -7,7 +7,6 @@ from .models import Message
 
 @require_http_methods(["POST"])
 def send_message(request):
-    """Send a message from the authenticated user to another user."""
     if not request.user.is_authenticated:
         return JsonResponse({"error": "Authentication required."}, status=401)
 
@@ -39,7 +38,7 @@ def send_message(request):
 
 @require_http_methods(["GET"])
 def get_conversation(request, user_id):
-    """Retrieve all messages between request.user and another user using filter + select_related."""
+    """Retrieve all messages between request.user and another user."""
     if not request.user.is_authenticated:
         return JsonResponse({"error": "Authentication required."}, status=401)
 
@@ -48,11 +47,14 @@ def get_conversation(request, user_id):
     except User.DoesNotExist:
         return JsonResponse({"error": "User not found."}, status=404)
 
-    # ✅ Directly using filter and select_related as checker expects
+    # ✅ Use filter + select_related + only for optimization
     messages = Message.objects.filter(
         Q(sender=request.user, receiver=other_user) |
         Q(sender=other_user, receiver=request.user)
-    ).select_related('sender', 'receiver', 'parent_message').prefetch_related('replies', 'replies__sender', 'replies__receiver').order_by('timestamp')
+    ).select_related('sender', 'receiver', 'parent_message') \
+     .prefetch_related('replies', 'replies__sender', 'replies__receiver') \
+     .only('id', 'sender__username', 'receiver__username', 'content', 'timestamp', 'parent_message') \
+     .order_by('timestamp')
 
     data = [
         {
@@ -91,7 +93,6 @@ def inbox(request):
 
 @require_http_methods(["DELETE"])
 def delete_user(request, user_id):
-    """Delete a user and trigger post_delete signals to clean up related data."""
     try:
         user = User.objects.get(id=user_id)
         username = user.username

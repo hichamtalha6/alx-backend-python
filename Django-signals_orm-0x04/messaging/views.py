@@ -6,6 +6,22 @@ from django.views import View
 from django.db.models import Q
 from .models import Message
 
+def inbox(request):
+    unread_messages = Message.unread.for_user(request.user)
+    return JsonResponse({
+        "unread_messages": [
+            {
+                "id": msg.id,
+                "sender": msg.sender.username,
+                "content": msg.content,
+                "timestamp": msg.timestamp
+            }
+            for msg in unread_messages
+        ]
+    })
+
+
+
 
 @require_http_methods(["POST"])
 def send_message(request):

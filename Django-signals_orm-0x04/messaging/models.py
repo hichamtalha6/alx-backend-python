@@ -1,20 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import User
-
-
-# ✅ Custom Manager to get unread messages efficiently
-class UnreadMessagesManager(models.Manager):
-    def for_user(self, user):
-        """
-        Return unread messages for the given user,
-        using .only() to select minimal fields for performance.
-        """
-        return (
-            self.filter(receiver=user, read=False)
-            .select_related('sender', 'receiver')
-            .only('id', 'sender__username', 'content', 'timestamp')
-        )
-
+from .managers import UnreadMessagesManager
 
 class Message(models.Model):
     sender = models.ForeignKey(User, related_name='sent_messages', on_delete=models.CASCADE)
@@ -36,10 +22,9 @@ class Message(models.Model):
         null=True,
         blank=True
     )
-    # ✅ New field to track if message has been read
     read = models.BooleanField(default=False)
 
-    # ✅ Attach the custom manager
+    # Managers
     objects = models.Manager()  # Default manager
     unread = UnreadMessagesManager()  # Custom manager for unread messages
 
@@ -47,9 +32,6 @@ class Message(models.Model):
         return f"Message from {self.sender.username} to {self.receiver.username}"
 
     def get_thread(self):
-        """
-        Recursively fetch all replies (and nested replies) for this message.
-        """
         thread = []
         for reply in self.replies.all().select_related('sender', 'receiver'):
             thread.append({
@@ -63,29 +45,7 @@ class Message(models.Model):
 
     @classmethod
     def get_conversation(cls, user):
-        """
-        Optimized query to get all messages (and replies) in a user's conversations.
-        """
         return cls.objects.filter(
             models.Q(sender=user) | models.Q(receiver=user),
             parent_message__isnull=True
         ).select_related('sender', 'receiver').prefetch_related('replies', 'replies__sender', 'replies__receiver')
-
-
-class Notification(models.Model):
-    user = models.ForeignKey(User, related_name='notifications', on_delete=models.CASCADE)
-    message = models.ForeignKey(Message, related_name='notifications', on_delete=models.CASCADE)
-    created_at = models.DateTimeField(auto_now_add=True)
-    is_read = models.BooleanField(default=False)
-
-    def __str__(self):
-        return f"Notification for {self.user.username} - Message ID {self.message.id}"
-
-
-class MessageHistory(models.Model):
-    message = models.ForeignKey(Message, related_name='history', on_delete=models.CASCADE)
-    old_content = models.TextField()
-    edited_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return f"History for Message ID {self.message.id} at {self.edited_at}"
